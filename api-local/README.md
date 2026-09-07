@@ -1,143 +1,169 @@
-# API local con OAuth2 PKCE + Azure AD
+# 🔐 API Local — OAuth2 PKCE + Azure AD
 
-Este laboratorio incluye una API local en Node.js/Express protegida con validación JWT usando JWKS de Azure AD, siguiendo el flujo OAuth2 Authorization Code con PKCE.
+## 🧾 Descripción
+Laboratorio técnico que implementa una API local en Node.js/Express protegida mediante validación JWT usando JWKS de Azure AD.  
+La autenticación sigue el flujo OAuth2 Authorization Code con PKCE, incluyendo generación de PKCE, obtención del token y validación completa del JWT.
 
-## Requisitos
+---
 
-- Node.js 18+
-- npm
-- Azure AD / Microsoft Entra ID con una aplicación registrada
-- curl
-- openssl
+## 📦 Requisitos
+- Node.js 18+  
+- npm  
+- Azure AD / Microsoft Entra ID con aplicación registrada  
+- curl  
+- openssl  
 
-## Estructura
+---
 
-```text
+## 🗂️ Estructura del laboratorio
+```
 api-local/
-  .env
-  package.json
-  server.js
-  scripts/
-    generate-pkce.sh
-    exchange-token.sh
-    call-api.sh
-  utils/
-    validateToken.js
+├── scripts/
+│   ├── generate-pkce.sh
+│   ├── exchange-token.sh
+│   └── call-api.sh
+├── utils/
+│   └── validateToken.js
+├── .env
+├── package.json
+├── package-lock.json
+├── server.js
+└── README.md
 ```
 
-## Instalación
+---
 
+## ⚙️ Instalación
 ```bash
 cd api-local
 npm install
 ```
 
-## Configuración
+---
 
-1. Edita el archivo `.env` con el Tenant ID, Client ID y API Application ID reales.
-2. Asegúrate de que tu aplicación Azure AD tenga:
-   - Redirect URI: `http://localhost:8080/callback`
-   - Plataforma Web o SPA según corresponda
-   - API expuesta con scope `access_as_user`
-   - Permiso delegado al scope de la API
+## 🔧 Configuración
+Editar `.env` con los valores reales:
 
-## Ejecutar la API
+```
+AZURE_TENANT_ID=
+AZURE_CLIENT_ID=
+API_APPLICATION_ID=
+REDIRECT_URI=http://localhost/callback
+```
 
+Asegúrate de que tu aplicación Azure AD tenga:
+
+- Redirect URI: `http://localhost/callback`  
+- Plataforma Web o SPA  
+- API expuesta con scope `access_as_user`  
+- Permiso delegado concedido  
+
+---
+
+## 🚀 Ejecutar la API
 ```bash
 cd api-local
 npm start
 ```
 
-La API queda disponible en:
-
-- `http://localhost:4010/health`
-- `http://localhost:4010/api/products`
-
-## Probar la API sin token
-
-```bash
-curl http://localhost:4010/api/products
+Endpoints disponibles:
+```
+http://localhost/health
+http://localhost/api/products
 ```
 
-Debe responder con `401`.
+---
 
-## Generar PKCE
+## 🧪 Probar la API sin token
+```bash
+curl http://localhost/api/products
+```
 
+Respuesta esperada: `401 Unauthorized`
+
+---
+
+## 🔐 Generar PKCE
 ```bash
 cd api-local
 ./scripts/generate-pkce.sh
 ```
 
-Copia el `code_verifier` y el `code_challenge` generados.
+El script genera:
+- `code_verifier`
+- `code_challenge`
 
-## Obtener el token desde Azure AD
+---
 
-Ejemplo con `curl`:
+## 🔑 Obtener token desde Azure AD
 
+### Variables necesarias
 ```bash
 export AZURE_TENANT_ID="<tenant-id>"
 export AZURE_CLIENT_ID="<client-id>"
-export REDIRECT_URI="http://localhost:8080/callback"
+export REDIRECT_URI="http://localhost/callback"
 export CODE_VERIFIER="<code_verifier>"
 export AUTHORIZATION_CODE="<authorization_code>"
+```
 
+### Intercambiar el authorization_code por token
+```bash
 ./scripts/exchange-token.sh
 ```
 
-## Consumir la API local
+---
 
+## 📡 Consumir la API con token
 ```bash
 export ACCESS_TOKEN="<access_token>"
 ./scripts/call-api.sh
 ```
 
-## Validación JWT
+---
 
-La validación se realiza usando `jwks-rsa` con el JWKS de Azure AD y comprobando:
+## 🔍 Validación JWT
+La API valida el token usando JWKS de Azure AD comprobando:
 
-- `iss`
-- `aud`
-- `exp`
-- `nbf`
-- firma RS256
-- `kid` con clave publicada en JWKS
+- `iss`  
+- `aud`  
+- `exp`  
+- `nbf`  
+- firma RS256  
+- `kid` presente en JWKS  
 
-## Solución de problemas comunes
+---
 
-### Error 501481
+## 🛠️ Errores comunes
 
-Se produce cuando la app no permite el flujo de autenticación de tipo `PKCE` o la política de acceso está configurada para un tipo de flujo distinto.
+### ❌ Error 501481  
+La app no permite flujo PKCE o la política no coincide.  
+**Solución:** habilitar *Allow public client flows* o ajustar el tipo de aplicación.
 
-Solución:
+### ❌ Error 90013  
+El usuario no tiene permisos o falta consentimiento.  
+**Solución:** conceder permisos delegados y aceptar consentimiento.
 
-- En Azure AD, en la aplicación, habilitar `Allow public client flows` o configurar la aplicación apropiada.
-- Usar la URI correcta y el `redirect_uri` esperado.
+---
 
-### Error 90013
-
-Se produce cuando el usuario no tiene permiso para la aplicación o el cliente no tiene un consentimiento válido.
-
-Solución:
-
-- Confirmar que la aplicación tiene permisos del tipo `Delegado`.
-- Aceptar el consentimiento.
-- Verificar que el `scope` consulte el recurso correcto.
-
-## Ejemplo de flujo completo
-
+## 🧪 Ejemplo de flujo completo
 ```bash
 cd api-local
 npm install
 npm start
+
 ./scripts/generate-pkce.sh
-# Construir la URL de autorización en Azure AD
-# Usar code_challenge obtenida
-# Intercambiar authorization_code por token
+# Construir URL de autorización con code_challenge
+
 ./scripts/exchange-token.sh
 export ACCESS_TOKEN="..."
 ./scripts/call-api.sh
 ```
 
-## Notas
+---
 
-Este laboratorio está pensado para demostrar la seguridad del flujo PKCE y la validación del token en la API local.
+## ✔️ Notas
+Este laboratorio demuestra:
+
+- Seguridad del flujo PKCE  
+- Validación de tokens JWT con JWKS  
+- Integración real con Azure AD  
